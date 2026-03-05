@@ -18,14 +18,20 @@ const movePadEl = document.getElementById("movePad");
 const stickBaseEl = document.getElementById("stickBase");
 const stickKnobEl = document.getElementById("stickKnob");
 const mobileLayoutEl = document.getElementById("mobileLayout");
+const fullscreenScaleModeEl = document.getElementById("fullscreenScaleMode");
 const fullscreenBtn = document.getElementById("fullscreenBtn");
+const viewportWrapEl = document.querySelector(".viewport-wrap");
 
 const MOBILE_LAYOUT_KEY = "dragon-mobile-layout";
+const FULLSCREEN_SCALE_KEY = "dragon-fullscreen-scale";
 const TOUCH_LAYOUTS = new Set(["classic", "lefty", "compact"]);
+const FULLSCREEN_SCALE_MODES = new Set(["cover", "contain"]);
 const isTouchDevice = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
 const tg = window.__tg || window.Telegram?.WebApp || null;
 const TG_TOP_OVERLAY_PX = 44;
 const MIN_VIEWPORT_HEIGHT = 320;
+const CANVAS_BASE_WIDTH = canvas.width;
+const CANVAS_BASE_HEIGHT = canvas.height;
 
 const input = {
   up: false,
@@ -60,6 +66,7 @@ const state = {
   particles: [],
   slashes: [],
   immersive: false,
+  fullscreenScaleMode: "cover",
   mobile: {
     enabled: isTouchDevice,
     layout: "classic",
@@ -115,6 +122,10 @@ function layoutLabel(layout) {
   return "Классика";
 }
 
+function fullscreenScaleLabel(mode) {
+  return mode === "contain" ? "Без обрезки (поля)" : "Без полос (обрезка)";
+}
+
 function getStoredLayout() {
   try {
     const value = localStorage.getItem(MOBILE_LAYOUT_KEY);
@@ -125,9 +136,25 @@ function getStoredLayout() {
   return "classic";
 }
 
+function getStoredFullscreenScaleMode() {
+  try {
+    const value = localStorage.getItem(FULLSCREEN_SCALE_KEY);
+    if (value && FULLSCREEN_SCALE_MODES.has(value)) {
+      return value;
+    }
+  } catch {}
+  return "cover";
+}
+
 function storeLayout(layout) {
   try {
     localStorage.setItem(MOBILE_LAYOUT_KEY, layout);
+  } catch {}
+}
+
+function storeFullscreenScaleMode(mode) {
+  try {
+    localStorage.setItem(FULLSCREEN_SCALE_KEY, mode);
   } catch {}
 }
 
@@ -173,6 +200,37 @@ function getTelegramViewportHeight() {
   return 0;
 }
 
+function applyImmersiveCanvasSize() {
+  if (!canvas) {
+    return;
+  }
+
+  if (!state.immersive || !viewportWrapEl) {
+    canvas.style.width = "";
+    canvas.style.height = "";
+    canvas.style.maxWidth = "";
+    canvas.style.maxHeight = "";
+    return;
+  }
+
+  const rect = viewportWrapEl.getBoundingClientRect();
+  const viewWidth = Math.max(1, rect.width);
+  const viewHeight = Math.max(1, rect.height);
+
+  const scaleX = viewWidth / CANVAS_BASE_WIDTH;
+  const scaleY = viewHeight / CANVAS_BASE_HEIGHT;
+  const scale = state.fullscreenScaleMode === "cover" ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY);
+
+  const roundSize = state.fullscreenScaleMode === "cover" ? Math.ceil : Math.floor;
+  const targetWidth = Math.max(1, roundSize(CANVAS_BASE_WIDTH * scale));
+  const targetHeight = Math.max(1, roundSize(CANVAS_BASE_HEIGHT * scale));
+
+  canvas.style.width = `${targetWidth}px`;
+  canvas.style.height = `${targetHeight}px`;
+  canvas.style.maxWidth = "none";
+  canvas.style.maxHeight = "none";
+}
+
 function updateViewportCssVars() {
   const tgHeight = getTelegramViewportHeight();
   const fallback = window.innerHeight || document.documentElement.clientHeight || MIN_VIEWPORT_HEIGHT;
@@ -181,6 +239,31 @@ function updateViewportCssVars() {
 
   document.documentElement.style.setProperty("--app-vh", `${Math.round(viewportHeight)}px`);
   document.documentElement.style.setProperty("--immersive-top-offset", `${topOffset}px`);
+
+  requestAnimationFrame(() => {
+    applyImmersiveCanvasSize();
+  });
+}
+
+function applyFullscreenScaleMode(mode) {
+  const target = FULLSCREEN_SCALE_MODES.has(mode) ? mode : "cover";
+  state.fullscreenScaleMode = target;
+
+  if (fullscreenScaleModeEl && fullscreenScaleModeEl.value !== target) {
+    fullscreenScaleModeEl.value = target;
+  }
+
+  storeFullscreenScaleMode(target);
+  applyImmersiveCanvasSize();
+  updateHint();
+}
+
+function isPortraitBlocked() {
+  return state.immersive && state.mobile.enabled && window.innerHeight > window.innerWidth;
+}
+
+function isBattlePaused() {
+  return state.status === "playing" && isPortraitBlocked();
 }
 
 function canUseTelegramFullscreen() {
@@ -422,23 +505,26 @@ function renderMeta() {
 
 function updateHint() {
   const layoutNote = state.mobile.enabled ? ` Схема Android: ${layoutLabel(state.mobile.layout)}.` : "";
+  const scaleNote = state.mobile.enabled && state.immersive
+    ? ` Режим экрана: ${fullscreenScaleLabel(state.fullscreenScaleMode)}.`
+    : "";
   const browserFullscreenSupported = Boolean(document.fullscreenEnabled || document.documentElement?.requestFullscreen);
 
-  if (state.immersive && state.mobile.enabled && window.innerHeight > window.innerWidth) {
+  if (isPortraitBlocked()) {
     interactionHintEl.textContent = "Поверни телефон горизонтально для нормального полного экрана.";
     return;
   }
 
   if (state.immersive && !canUseTelegramFullscreen() && !browserFullscreenSupported) {
-    interactionHintEl.textContent = "Системный fullscreen ограничен этим Telegram-клиентом. Игровой режим уже включен.";
+    interactionHintEl.textContent = `Системный fullscreen ограничен этим Telegram-клиентом. Игровой режим уже включен.${scaleNote}`;
     return;
   }
 
   if (state.status === "playing") {
     if (state.dragon.enraged) {
-      interactionHintEl.textContent = `Ярость босса: больше огня. Уклоняйся рывком (Shift).${layoutNote}`;
+      interactionHintEl.textContent = `Ярость босса: больше огня. Уклоняйся рывком (Shift).${layoutNote}${scaleNote}`;
     } else {
-      interactionHintEl.textContent = `Space - меч, Q - ледяная стрела, Shift - рывок.${layoutNote}`;
+      interactionHintEl.textContent = `Space - меч, Q - ледяная стрела, Shift - рывок.${layoutNote}${scaleNote}`;
     }
     return;
   }
@@ -513,17 +599,28 @@ function triggerTouchAction(action) {
 
 function initTouchControls() {
   applyMobileLayout(getStoredLayout());
+  applyFullscreenScaleMode(getStoredFullscreenScaleMode());
 
   if (!touchControlsEl || !movePadEl || !mobileLayoutEl) {
     return;
   }
 
   mobileLayoutEl.disabled = !state.mobile.enabled;
+  if (fullscreenScaleModeEl) {
+    fullscreenScaleModeEl.disabled = !state.mobile.enabled;
+  }
+
   touchControlsEl.classList.toggle("hidden", !state.mobile.enabled);
 
   mobileLayoutEl.addEventListener("change", () => {
     applyMobileLayout(mobileLayoutEl.value);
   });
+
+  if (fullscreenScaleModeEl) {
+    fullscreenScaleModeEl.addEventListener("change", () => {
+      applyFullscreenScaleMode(fullscreenScaleModeEl.value);
+    });
+  }
 
   movePadEl.addEventListener("pointerdown", (event) => {
     if (!state.mobile.enabled) {
@@ -751,7 +848,7 @@ function finishBattle(victory) {
 }
 
 function useSlash() {
-  if (state.status !== "playing" || state.player.slashCd > 0) {
+  if (state.status !== "playing" || isBattlePaused() || state.player.slashCd > 0) {
     return;
   }
 
@@ -779,7 +876,7 @@ function useSlash() {
 }
 
 function useDash() {
-  if (state.status !== "playing" || state.player.dashCd > 0) {
+  if (state.status !== "playing" || isBattlePaused() || state.player.dashCd > 0) {
     return;
   }
 
@@ -819,7 +916,7 @@ function useDash() {
 }
 
 function useIceShot() {
-  if (state.status !== "playing" || state.player.iceCd > 0) {
+  if (state.status !== "playing" || isBattlePaused() || state.player.iceCd > 0) {
     return;
   }
 
@@ -1490,7 +1587,14 @@ function tick(ts) {
   const dt = Math.min(0.033, (ts - state.lastTs) / 1000);
   state.lastTs = ts;
 
-  update(dt);
+  if (!isPortraitBlocked()) {
+    update(dt);
+  } else {
+    renderMeta();
+    updateAbilityButtons();
+    updateHint();
+  }
+
   renderScene();
 
   requestAnimationFrame(tick);
@@ -1545,6 +1649,21 @@ initTelegramBindings();
 initFullscreenControl();
 resetGame();
 requestAnimationFrame(tick);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

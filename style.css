@@ -137,10 +137,11 @@ body {
 }
 
 .immersive-mode #gameCanvas {
-  width: min(100vw, calc((var(--app-vh) - var(--immersive-top-offset) - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 16 / 9));
+  width: auto;
   height: auto;
-  max-height: calc(var(--app-vh) - var(--immersive-top-offset) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-  aspect-ratio: 16 / 9;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: auto;
   border-radius: 0;
   border: 0;
 }
@@ -467,6 +468,7 @@ body {
     gap: 8px;
   }
 }
+
 
 
 
