@@ -1,0 +1,70 @@
+﻿<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Битва с Драконом</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <h1 id="levelTitle">🐉 Битва с Драконом</h1>
+        <p id="levelLocation">Лавовая арена у руин старой крепости.</p>
+        <p class="controls-hint">Управление: WASD/стрелки - движение, Space - меч, Q - ледяная стрела, Shift - рывок, R - рестарт. На Android можно менять схему.</p>
+      </header>
+
+      <section class="viewport-wrap">
+        <canvas id="gameCanvas" width="960" height="540" aria-label="Арена битвы"></canvas>
+        <div id="interactionHint" class="interaction-hint"></div>
+        <div id="touchControls" class="touch-controls hidden" data-layout="classic">
+          <div id="movePadWrap" class="move-pad-wrap">
+            <div id="movePad" class="move-pad">
+              <div id="stickBase" class="stick-base">
+                <div id="stickKnob" class="stick-knob"></div>
+              </div>
+            </div>
+          </div>
+          <div id="actionPad" class="action-pad">
+            <button class="touch-action-btn" data-touch-action="slash" type="button">⚔</button>
+            <button class="touch-action-btn" data-touch-action="ice" type="button">❄</button>
+            <button class="touch-action-btn" data-touch-action="dash" type="button">➤</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="hud-grid">
+        <article class="panel">
+          <h2>🎯 Задача</h2>
+          <p id="questText" class="quest"></p>
+
+          <h2>⚔ Умения</h2>
+          <div id="inventory" class="inventory"></div>
+
+          <h2>📱 Android</h2>
+          <div class="mobile-settings">
+            <label for="mobileLayout">Схема управления:</label>
+            <select id="mobileLayout">
+              <option value="classic">Классика</option>
+              <option value="lefty">Левша</option>
+              <option value="compact">Компакт</option>
+            </select>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>📜 Боевой лог</h2>
+          <div id="log" class="log" aria-live="polite"></div>
+        </article>
+      </section>
+
+      <section id="ending" class="ending hidden" aria-live="polite">
+        <h2 id="endingTitle"></h2>
+        <p id="endingText"></p>
+        <button id="nextLevelBtn" type="button">Начать заново</button>
+      </section>
+    </main>
+
+    <script src="game.js"></script>
+  </body>
+</html>

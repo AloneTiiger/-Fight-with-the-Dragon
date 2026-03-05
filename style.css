@@ -1,0 +1,372 @@
+﻿:root {
+  --bg-a: #190f10;
+  --bg-b: #0e0b0d;
+  --panel: rgba(29, 22, 24, 0.9);
+  --text: #f9f2e6;
+  --muted: #d9c8b7;
+  --accent: #ffb04d;
+  --accent-2: #7bd4ff;
+  --danger: #ff6c57;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(1200px 640px at 92% -12%, #49292e 0%, transparent 72%),
+    radial-gradient(900px 560px at -20% -10%, #6a3a21 0%, transparent 70%),
+    linear-gradient(170deg, var(--bg-a), var(--bg-b));
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.app {
+  width: min(1120px, 100%);
+  background: linear-gradient(160deg, rgba(44, 27, 28, 0.9), rgba(20, 16, 19, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 22px 36px rgba(0, 0, 0, 0.55);
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.4vw, 2rem);
+}
+
+.topbar p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.controls-hint {
+  font-size: 0.92rem;
+}
+
+.viewport-wrap {
+  margin-top: 12px;
+  position: relative;
+}
+
+#gameCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #1a1010;
+  touch-action: none;
+}
+
+.interaction-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  background: rgba(12, 14, 20, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text);
+  padding: 6px 11px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  pointer-events: none;
+  min-height: 32px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.touch-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.touch-controls.hidden {
+  display: none;
+}
+
+.move-pad-wrap,
+.action-pad {
+  position: absolute;
+  bottom: 16px;
+  pointer-events: auto;
+}
+
+.move-pad {
+  width: 166px;
+  height: 166px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, rgba(175, 186, 212, 0.18), rgba(24, 30, 42, 0.6));
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  display: grid;
+  place-items: center;
+  touch-action: none;
+}
+
+.stick-base {
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.34);
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.stick-knob {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, #b6d2ff, #689ad4);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
+  transform: translate(0px, 0px);
+}
+
+.action-pad {
+  display: grid;
+  grid-template-columns: repeat(2, 74px);
+  grid-template-rows: repeat(2, 74px);
+  gap: 10px;
+}
+
+.touch-action-btn {
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(26, 36, 52, 0.93), rgba(15, 22, 34, 0.96));
+  color: #f7fdff;
+  font-size: 1.48rem;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+
+.touch-action-btn:active {
+  transform: translateY(1px) scale(0.98);
+  filter: brightness(1.1);
+}
+
+.touch-action-btn[data-touch-action="slash"] {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.touch-action-btn[data-touch-action="ice"] {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.touch-action-btn[data-touch-action="dash"] {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.touch-controls[data-layout="classic"] .move-pad-wrap {
+  left: 16px;
+}
+
+.touch-controls[data-layout="classic"] .action-pad {
+  right: 16px;
+}
+
+.touch-controls[data-layout="lefty"] .move-pad-wrap {
+  right: 16px;
+}
+
+.touch-controls[data-layout="lefty"] .action-pad {
+  left: 16px;
+}
+
+.touch-controls[data-layout="compact"] .move-pad-wrap {
+  left: 10px;
+  bottom: 12px;
+  transform: scale(0.88);
+  transform-origin: left bottom;
+}
+
+.touch-controls[data-layout="compact"] .action-pad {
+  right: 10px;
+  bottom: 10px;
+  transform: scale(0.88);
+  transform-origin: right bottom;
+  grid-template-columns: repeat(3, 64px);
+  grid-template-rows: 64px;
+}
+
+.touch-controls[data-layout="compact"] .touch-action-btn[data-touch-action="slash"] {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.touch-controls[data-layout="compact"] .touch-action-btn[data-touch-action="ice"] {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.touch-controls[data-layout="compact"] .touch-action-btn[data-touch-action="dash"] {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.hud-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1.05fr;
+  gap: 10px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 1.04rem;
+}
+
+.quest {
+  margin: 0 0 10px;
+  color: #ffd295;
+}
+
+.inventory {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.inventory button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--accent);
+  color: #2a1807;
+  font-weight: 700;
+  cursor: pointer;
+  min-width: 160px;
+}
+
+.inventory button:hover {
+  filter: brightness(1.07);
+}
+
+.inventory button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.mobile-settings {
+  display: grid;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.mobile-settings label {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.mobile-settings select {
+  width: min(260px, 100%);
+  background: rgba(15, 17, 24, 0.86);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.log {
+  max-height: 180px;
+  overflow: auto;
+  background: rgba(13, 14, 20, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.log p {
+  margin: 0 0 8px;
+}
+
+.ending {
+  margin-top: 10px;
+  background: rgba(31, 20, 17, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.ending h2 {
+  margin: 0 0 6px;
+}
+
+.ending p {
+  margin: 0 0 10px;
+}
+
+.ending button {
+  border: 0;
+  border-radius: 8px;
+  padding: 9px;
+  font-weight: 700;
+  background: var(--accent-2);
+  color: #12212b;
+  cursor: pointer;
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .hud-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .controls-hint {
+    font-size: 0.86rem;
+  }
+
+  .inventory button {
+    min-width: 132px;
+  }
+
+  .interaction-hint {
+    font-size: 0.8rem;
+    bottom: 10px;
+    max-width: 90%;
+  }
+
+  .move-pad {
+    width: 148px;
+    height: 148px;
+  }
+
+  .stick-base {
+    width: 98px;
+    height: 98px;
+  }
+
+  .stick-knob {
+    width: 44px;
+    height: 44px;
+  }
+
+  .action-pad {
+    grid-template-columns: repeat(2, 68px);
+    grid-template-rows: repeat(2, 68px);
+    gap: 8px;
+  }
+}
