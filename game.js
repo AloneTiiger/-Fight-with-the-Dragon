@@ -25,6 +25,7 @@ const TOUCH_LAYOUTS = new Set(["classic", "lefty", "compact"]);
 const isTouchDevice = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
 const tg = window.__tg || window.Telegram?.WebApp || null;
 const TG_TOP_OVERLAY_PX = 44;
+const MIN_VIEWPORT_HEIGHT = 320;
 
 const input = {
   up: false,
@@ -174,13 +175,47 @@ function getTelegramViewportHeight() {
 
 function updateViewportCssVars() {
   const tgHeight = getTelegramViewportHeight();
-  const viewportHeight = tgHeight > 0 ? tgHeight : window.innerHeight;
+  const fallback = window.innerHeight || document.documentElement.clientHeight || MIN_VIEWPORT_HEIGHT;
+  const viewportHeight = Math.max(MIN_VIEWPORT_HEIGHT, tgHeight > 0 ? tgHeight : fallback);
   const topOffset = state.immersive && state.mobile.enabled && tg ? TG_TOP_OVERLAY_PX : 0;
 
   document.documentElement.style.setProperty("--app-vh", `${Math.round(viewportHeight)}px`);
   document.documentElement.style.setProperty("--immersive-top-offset", `${topOffset}px`);
 }
 
+function canUseTelegramFullscreen() {
+  if (!tg?.requestFullscreen || !tg?.exitFullscreen) {
+    return false;
+  }
+
+  try {
+    if (typeof tg.isVersionAtLeast === "function") {
+      return tg.isVersionAtLeast("8.0");
+    }
+  } catch {}
+
+  return false;
+}
+
+function requestTelegramFullscreen() {
+  if (!canUseTelegramFullscreen()) {
+    return;
+  }
+
+  try {
+    tg.requestFullscreen();
+  } catch {}
+}
+
+function exitTelegramFullscreen() {
+  if (!canUseTelegramFullscreen()) {
+    return;
+  }
+
+  try {
+    tg.exitFullscreen();
+  } catch {}
+}
 function isBrowserFullscreen() {
   return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
 }
@@ -227,12 +262,7 @@ function setImmersiveMode(enabled) {
   }
 
   try {
-    if (enabled) {
-      tg?.expand?.();
-      tg?.requestFullscreen?.();
-    } else {
-      tg?.exitFullscreen?.();
-    }
+    tg?.expand?.();
   } catch {}
 
   updateViewportCssVars();
@@ -240,19 +270,25 @@ function setImmersiveMode(enabled) {
 }
 
 async function toggleFullscreenMode() {
-  const shouldEnable = !state.immersive;
+  try {
+    const shouldEnable = !state.immersive;
 
-  if (shouldEnable) {
-    await requestBrowserFullscreen();
-    await lockLandscapeOrientation();
-    setImmersiveMode(true);
-    tgImpact("light");
-    return;
+    if (shouldEnable) {
+      setImmersiveMode(true);
+      requestTelegramFullscreen();
+      await requestBrowserFullscreen();
+      await lockLandscapeOrientation();
+      tgImpact("light");
+      return;
+    }
+
+    exitTelegramFullscreen();
+    await exitBrowserFullscreen();
+    unlockOrientation();
+    setImmersiveMode(false);
+  } catch {
+    setImmersiveMode(!state.immersive);
   }
-
-  await exitBrowserFullscreen();
-  unlockOrientation();
-  setImmersiveMode(false);
 }
 
 function initFullscreenControl() {
@@ -279,24 +315,36 @@ function initFullscreenControl() {
     updateHint();
   });
 
-  tg?.onEvent?.("viewportChanged", () => {
-    updateViewportCssVars();
-    updateHint();
-  });
+  try {
+    tg?.onEvent?.("viewportChanged", () => {
+      updateViewportCssVars();
+      updateHint();
+    });
+  } catch {}
 
-  tg?.onEvent?.("fullscreenChanged", (payload) => {
-    const isFullscreen = typeof payload === "boolean"
-      ? payload
-      : Boolean(payload?.isFullscreen ?? payload?.is_fullscreen);
+  try {
+    tg?.onEvent?.("fullscreenChanged", (payload) => {
+      let isFullscreen = null;
 
-    if (!isFullscreen && state.immersive && !isBrowserFullscreen()) {
-      unlockOrientation();
-      setImmersiveMode(false);
-      return;
-    }
+      if (typeof payload === "boolean") {
+        isFullscreen = payload;
+      } else if (payload && typeof payload === "object") {
+        if (typeof payload.isFullscreen === "boolean") {
+          isFullscreen = payload.isFullscreen;
+        } else if (typeof payload.is_fullscreen === "boolean") {
+          isFullscreen = payload.is_fullscreen;
+        }
+      }
 
-    updateViewportCssVars();
-  });
+      if (isFullscreen === false && state.immersive && !isBrowserFullscreen()) {
+        unlockOrientation();
+        setImmersiveMode(false);
+        return;
+      }
+
+      updateViewportCssVars();
+    });
+  } catch {}
 }
 
 function addLog(text) {
@@ -1527,6 +1575,15 @@ initTelegramBindings();
 initFullscreenControl();
 resetGame();
 requestAnimationFrame(tick);
+
+
+
+
+
+
+
+
+
 
 
 
