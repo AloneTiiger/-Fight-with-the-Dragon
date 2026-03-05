@@ -7,6 +7,8 @@
   --accent: #ffb04d;
   --accent-2: #7bd4ff;
   --danger: #ff6c57;
+  --app-vh: 100vh;
+  --immersive-top-offset: 0px;
 }
 
 * {
@@ -15,7 +17,7 @@
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: var(--app-vh);
   font-family: "Segoe UI", "Trebuchet MS", sans-serif;
   color: var(--text);
   background:
@@ -59,6 +61,7 @@ body {
   display: block;
   width: 100%;
   height: auto;
+  aspect-ratio: 16 / 9;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: #1a1010;
@@ -110,7 +113,7 @@ body {
 .immersive-mode .app {
   width: 100vw;
   max-width: none;
-  min-height: 100vh;
+  min-height: var(--app-vh);
   border-radius: 0;
   border: 0;
   padding: 0;
@@ -124,18 +127,27 @@ body {
 .immersive-mode .viewport-wrap {
   margin-top: 0;
   width: 100vw;
-  height: 100vh;
+  height: var(--app-vh);
+  display: grid;
+  place-items: center;
+  background: #060608;
+  overflow: hidden;
+  padding-top: calc(var(--immersive-top-offset) + env(safe-area-inset-top));
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .immersive-mode #gameCanvas {
-  width: 100vw;
-  height: 100vh;
+  width: min(100vw, calc((var(--app-vh) - var(--immersive-top-offset) - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 16 / 9));
+  height: auto;
+  max-height: calc(var(--app-vh) - var(--immersive-top-offset) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  aspect-ratio: 16 / 9;
   border-radius: 0;
   border: 0;
 }
 
 .immersive-mode .interaction-hint {
-  bottom: max(12px, env(safe-area-inset-bottom));
+  bottom: max(96px, env(safe-area-inset-bottom));
+  max-width: min(94vw, 520px);
 }
 
 .immersive-mode .touch-controls {
@@ -143,7 +155,7 @@ body {
 }
 
 .immersive-mode .fullscreen-toggle {
-  top: max(8px, env(safe-area-inset-top));
+  top: calc(var(--immersive-top-offset) + max(8px, env(safe-area-inset-top)));
   right: max(8px, env(safe-area-inset-right));
 }
 
@@ -154,6 +166,13 @@ body {
   bottom: max(8px, env(safe-area-inset-bottom));
   z-index: 120;
   margin: 0;
+}
+
+@media (orientation: portrait) {
+  .immersive-mode .interaction-hint {
+    bottom: max(110px, env(safe-area-inset-bottom));
+    font-size: 0.95rem;
+  }
 }
 
 .touch-controls {
@@ -448,5 +467,9 @@ body {
     gap: 8px;
   }
 }
+
+
+
+
 
 

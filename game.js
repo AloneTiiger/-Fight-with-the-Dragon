@@ -24,6 +24,7 @@ const MOBILE_LAYOUT_KEY = "dragon-mobile-layout";
 const TOUCH_LAYOUTS = new Set(["classic", "lefty", "compact"]);
 const isTouchDevice = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
 const tg = window.__tg || window.Telegram?.WebApp || null;
+const TG_TOP_OVERLAY_PX = 44;
 
 const input = {
   up: false,
@@ -157,6 +158,29 @@ function initTelegramBindings() {
   });
 }
 
+function getTelegramViewportHeight() {
+  const stable = Number(tg?.viewportStableHeight);
+  if (Number.isFinite(stable) && stable > 0) {
+    return stable;
+  }
+
+  const current = Number(tg?.viewportHeight);
+  if (Number.isFinite(current) && current > 0) {
+    return current;
+  }
+
+  return 0;
+}
+
+function updateViewportCssVars() {
+  const tgHeight = getTelegramViewportHeight();
+  const viewportHeight = tgHeight > 0 ? tgHeight : window.innerHeight;
+  const topOffset = state.immersive && state.mobile.enabled && tg ? TG_TOP_OVERLAY_PX : 0;
+
+  document.documentElement.style.setProperty("--app-vh", `${Math.round(viewportHeight)}px`);
+  document.documentElement.style.setProperty("--immersive-top-offset", `${topOffset}px`);
+}
+
 function isBrowserFullscreen() {
   return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
 }
@@ -182,6 +206,18 @@ async function exitBrowserFullscreen() {
   } catch {}
 }
 
+async function lockLandscapeOrientation() {
+  try {
+    await window.screen?.orientation?.lock?.("landscape");
+  } catch {}
+}
+
+function unlockOrientation() {
+  try {
+    window.screen?.orientation?.unlock?.();
+  } catch {}
+}
+
 function setImmersiveMode(enabled) {
   state.immersive = enabled;
   document.body.classList.toggle("immersive-mode", enabled);
@@ -198,6 +234,9 @@ function setImmersiveMode(enabled) {
       tg?.exitFullscreen?.();
     }
   } catch {}
+
+  updateViewportCssVars();
+  updateHint();
 }
 
 async function toggleFullscreenMode() {
@@ -205,16 +244,20 @@ async function toggleFullscreenMode() {
 
   if (shouldEnable) {
     await requestBrowserFullscreen();
+    await lockLandscapeOrientation();
     setImmersiveMode(true);
     tgImpact("light");
     return;
   }
 
   await exitBrowserFullscreen();
+  unlockOrientation();
   setImmersiveMode(false);
 }
 
 function initFullscreenControl() {
+  updateViewportCssVars();
+
   if (fullscreenBtn) {
     fullscreenBtn.addEventListener("click", () => {
       toggleFullscreenMode();
@@ -223,8 +266,36 @@ function initFullscreenControl() {
 
   document.addEventListener("fullscreenchange", () => {
     if (!isBrowserFullscreen() && state.immersive) {
+      unlockOrientation();
       setImmersiveMode(false);
+      return;
     }
+
+    updateViewportCssVars();
+  });
+
+  window.addEventListener("resize", () => {
+    updateViewportCssVars();
+    updateHint();
+  });
+
+  tg?.onEvent?.("viewportChanged", () => {
+    updateViewportCssVars();
+    updateHint();
+  });
+
+  tg?.onEvent?.("fullscreenChanged", (payload) => {
+    const isFullscreen = typeof payload === "boolean"
+      ? payload
+      : Boolean(payload?.isFullscreen ?? payload?.is_fullscreen);
+
+    if (!isFullscreen && state.immersive && !isBrowserFullscreen()) {
+      unlockOrientation();
+      setImmersiveMode(false);
+      return;
+    }
+
+    updateViewportCssVars();
   });
 }
 
@@ -339,6 +410,11 @@ function renderMeta() {
 
 function updateHint() {
   const layoutNote = state.mobile.enabled ? ` Схема Android: ${layoutLabel(state.mobile.layout)}.` : "";
+
+  if (state.immersive && state.mobile.enabled && window.innerHeight > window.innerWidth) {
+    interactionHintEl.textContent = "Поверни телефон горизонтально для нормального полного экрана.";
+    return;
+  }
 
   if (state.status === "playing") {
     if (state.dragon.enraged) {
@@ -1451,6 +1527,14 @@ initTelegramBindings();
 initFullscreenControl();
 resetGame();
 requestAnimationFrame(tick);
+
+
+
+
+
+
+
+
 
 
 
