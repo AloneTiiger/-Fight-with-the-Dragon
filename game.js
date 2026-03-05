@@ -184,17 +184,7 @@ function updateViewportCssVars() {
 }
 
 function canUseTelegramFullscreen() {
-  if (!tg?.requestFullscreen || !tg?.exitFullscreen) {
-    return false;
-  }
-
-  try {
-    if (typeof tg.isVersionAtLeast === "function") {
-      return tg.isVersionAtLeast("8.0");
-    }
-  } catch {}
-
-  return false;
+  return Boolean(tg && typeof tg.requestFullscreen === "function" && typeof tg.exitFullscreen === "function");
 }
 
 function requestTelegramFullscreen() {
@@ -270,25 +260,21 @@ function setImmersiveMode(enabled) {
 }
 
 async function toggleFullscreenMode() {
-  try {
-    const shouldEnable = !state.immersive;
+  const shouldEnable = !state.immersive;
 
-    if (shouldEnable) {
-      setImmersiveMode(true);
-      requestTelegramFullscreen();
-      await requestBrowserFullscreen();
-      await lockLandscapeOrientation();
-      tgImpact("light");
-      return;
-    }
-
-    exitTelegramFullscreen();
-    await exitBrowserFullscreen();
-    unlockOrientation();
-    setImmersiveMode(false);
-  } catch {
-    setImmersiveMode(!state.immersive);
+  if (shouldEnable) {
+    setImmersiveMode(true);
+    requestTelegramFullscreen();
+    await requestBrowserFullscreen();
+    await lockLandscapeOrientation();
+    tgImpact("light");
+    return;
   }
+
+  setImmersiveMode(false);
+  exitTelegramFullscreen();
+  await exitBrowserFullscreen();
+  unlockOrientation();
 }
 
 function initFullscreenControl() {
@@ -301,13 +287,8 @@ function initFullscreenControl() {
   }
 
   document.addEventListener("fullscreenchange", () => {
-    if (!isBrowserFullscreen() && state.immersive) {
-      unlockOrientation();
-      setImmersiveMode(false);
-      return;
-    }
-
     updateViewportCssVars();
+    updateHint();
   });
 
   window.addEventListener("resize", () => {
@@ -323,26 +304,9 @@ function initFullscreenControl() {
   } catch {}
 
   try {
-    tg?.onEvent?.("fullscreenChanged", (payload) => {
-      let isFullscreen = null;
-
-      if (typeof payload === "boolean") {
-        isFullscreen = payload;
-      } else if (payload && typeof payload === "object") {
-        if (typeof payload.isFullscreen === "boolean") {
-          isFullscreen = payload.isFullscreen;
-        } else if (typeof payload.is_fullscreen === "boolean") {
-          isFullscreen = payload.is_fullscreen;
-        }
-      }
-
-      if (isFullscreen === false && state.immersive && !isBrowserFullscreen()) {
-        unlockOrientation();
-        setImmersiveMode(false);
-        return;
-      }
-
+    tg?.onEvent?.("fullscreenChanged", () => {
       updateViewportCssVars();
+      updateHint();
     });
   } catch {}
 }
@@ -458,9 +422,15 @@ function renderMeta() {
 
 function updateHint() {
   const layoutNote = state.mobile.enabled ? ` Схема Android: ${layoutLabel(state.mobile.layout)}.` : "";
+  const browserFullscreenSupported = Boolean(document.fullscreenEnabled || document.documentElement?.requestFullscreen);
 
   if (state.immersive && state.mobile.enabled && window.innerHeight > window.innerWidth) {
     interactionHintEl.textContent = "Поверни телефон горизонтально для нормального полного экрана.";
+    return;
+  }
+
+  if (state.immersive && !canUseTelegramFullscreen() && !browserFullscreenSupported) {
+    interactionHintEl.textContent = "Системный fullscreen ограничен этим Telegram-клиентом. Игровой режим уже включен.";
     return;
   }
 
@@ -1575,6 +1545,11 @@ initTelegramBindings();
 initFullscreenControl();
 resetGame();
 requestAnimationFrame(tick);
+
+
+
+
+
 
 
 
