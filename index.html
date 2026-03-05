@@ -11,12 +11,13 @@
       <header class="topbar">
         <h1 id="levelTitle">🐉 Битва с Драконом</h1>
         <p id="levelLocation">Лавовая арена у руин старой крепости.</p>
-        <p class="controls-hint">Управление: WASD/стрелки - движение, Space - меч, Q - ледяная стрела, Shift - рывок, R - рестарт. На Android можно менять схему.</p>
+        <p class="controls-hint">Управление: WASD/стрелки - движение, Space - меч, Q - ледяная стрела, Shift - рывок, R - рестарт, F/кнопка ⛶ - полный экран. На Android можно менять схему.</p>
       </header>
 
       <section class="viewport-wrap">
         <canvas id="gameCanvas" width="960" height="540" aria-label="Арена битвы"></canvas>
         <div id="interactionHint" class="interaction-hint"></div>
+        <button id="fullscreenBtn" class="fullscreen-toggle" type="button">⛶ Полный экран</button>
         <div id="touchControls" class="touch-controls hidden" data-layout="classic">
           <div id="movePadWrap" class="move-pad-wrap">
             <div id="movePad" class="move-pad">
@@ -65,6 +66,29 @@
       </section>
     </main>
 
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      (function () {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) {
+          return;
+        }
+
+        tg.ready();
+        tg.expand();
+
+        try {
+          tg.disableVerticalSwipes?.();
+          tg.setHeaderColor?.("#1f0f11");
+          tg.setBackgroundColor?.("#140d0f");
+        } catch {}
+
+        window.__tg = tg;
+      })();
+    </script>
     <script src="game.js"></script>
   </body>
 </html>
+
+
+

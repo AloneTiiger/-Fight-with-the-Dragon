@@ -18,10 +18,12 @@ const movePadEl = document.getElementById("movePad");
 const stickBaseEl = document.getElementById("stickBase");
 const stickKnobEl = document.getElementById("stickKnob");
 const mobileLayoutEl = document.getElementById("mobileLayout");
+const fullscreenBtn = document.getElementById("fullscreenBtn");
 
 const MOBILE_LAYOUT_KEY = "dragon-mobile-layout";
 const TOUCH_LAYOUTS = new Set(["classic", "lefty", "compact"]);
 const isTouchDevice = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+const tg = window.__tg || window.Telegram?.WebApp || null;
 
 const input = {
   up: false,
@@ -55,6 +57,7 @@ const state = {
   iceShots: [],
   particles: [],
   slashes: [],
+  immersive: false,
   mobile: {
     enabled: isTouchDevice,
     layout: "classic",
@@ -126,6 +129,105 @@ function storeLayout(layout) {
   } catch {}
 }
 
+function tgImpact(style = "light") {
+  try {
+    tg?.HapticFeedback?.impactOccurred?.(style);
+  } catch {}
+}
+
+function tgNotify(type = "success") {
+  try {
+    tg?.HapticFeedback?.notificationOccurred?.(type);
+  } catch {}
+}
+
+function initTelegramBindings() {
+  if (!tg?.MainButton) {
+    return;
+  }
+
+  tg.MainButton.setParams({
+    is_visible: false,
+    color: "#7bd4ff",
+    text_color: "#10202c"
+  });
+
+  tg.onEvent?.("mainButtonClicked", () => {
+    resetGame();
+  });
+}
+
+function isBrowserFullscreen() {
+  return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+async function requestBrowserFullscreen() {
+  const target = document.documentElement;
+  try {
+    if (target.requestFullscreen) {
+      await target.requestFullscreen();
+    } else if (target.webkitRequestFullscreen) {
+      target.webkitRequestFullscreen();
+    }
+  } catch {}
+}
+
+async function exitBrowserFullscreen() {
+  try {
+    if (document.exitFullscreen) {
+      await document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
+  } catch {}
+}
+
+function setImmersiveMode(enabled) {
+  state.immersive = enabled;
+  document.body.classList.toggle("immersive-mode", enabled);
+
+  if (fullscreenBtn) {
+    fullscreenBtn.textContent = enabled ? "↙ Обычный экран" : "⛶ Полный экран";
+  }
+
+  try {
+    if (enabled) {
+      tg?.expand?.();
+      tg?.requestFullscreen?.();
+    } else {
+      tg?.exitFullscreen?.();
+    }
+  } catch {}
+}
+
+async function toggleFullscreenMode() {
+  const shouldEnable = !state.immersive;
+
+  if (shouldEnable) {
+    await requestBrowserFullscreen();
+    setImmersiveMode(true);
+    tgImpact("light");
+    return;
+  }
+
+  await exitBrowserFullscreen();
+  setImmersiveMode(false);
+}
+
+function initFullscreenControl() {
+  if (fullscreenBtn) {
+    fullscreenBtn.addEventListener("click", () => {
+      toggleFullscreenMode();
+    });
+  }
+
+  document.addEventListener("fullscreenchange", () => {
+    if (!isBrowserFullscreen() && state.immersive) {
+      setImmersiveMode(false);
+    }
+  });
+}
+
 function addLog(text) {
   state.logs.unshift(text);
   if (state.logs.length > 32) {
@@ -148,10 +250,19 @@ function showEnding(title, text, buttonText) {
   endingTextEl.textContent = text;
   nextLevelBtn.textContent = buttonText;
   endingEl.classList.remove("hidden");
+
+  if (tg?.MainButton) {
+    tg.MainButton.setText(buttonText);
+    tg.MainButton.show();
+  }
 }
 
 function hideEnding() {
   endingEl.classList.add("hidden");
+
+  if (tg?.MainButton) {
+    tg.MainButton.hide();
+  }
 }
 
 function createAbilityButtons() {
@@ -484,6 +595,7 @@ function dealDamageToPlayer(amount, reason) {
   state.player.hp = Math.max(0, state.player.hp - amount);
   state.player.invuln = 0.85;
   state.shake = Math.max(state.shake, 0.32);
+  tgImpact("rigid");
   spawnBurst(state.player.x, state.player.y - 18, "255,110,100", 14, 210);
 
   if (reason) {
@@ -516,6 +628,7 @@ function dealDamageToDragon(amount, reason) {
 
 function finishBattle(victory) {
   state.status = victory ? "win" : "lose";
+  tgNotify(victory ? "success" : "error");
 
   if (victory) {
     addLog("Дракон повержен. Крепость снова видит рассвет.");
@@ -549,6 +662,7 @@ function useSlash() {
   }
 
   state.player.slashCd = COOLDOWNS.slash;
+  tgImpact("light");
   state.slashes.push({
     x: state.player.x,
     y: state.player.y - 8,
@@ -589,6 +703,7 @@ function useDash() {
   dirY /= len;
 
   state.player.dashCd = COOLDOWNS.dash;
+  tgImpact("medium");
   state.player.dashTime = 0.17;
   state.player.dashVX = dirX * 650;
   state.player.dashVY = dirY * 650;
@@ -615,6 +730,7 @@ function useIceShot() {
   }
 
   state.player.iceCd = COOLDOWNS.ice;
+  tgImpact("light");
 
   let dirX = state.dragon.x - state.player.x;
   let dirY = state.dragon.y - 18 - state.player.y;
@@ -1310,6 +1426,11 @@ window.addEventListener("keydown", (event) => {
   if (key === "r") {
     resetGame();
   }
+
+  if (key === "f") {
+    event.preventDefault();
+    toggleFullscreenMode();
+  }
 });
 
 window.addEventListener("keyup", (event) => {
@@ -1326,8 +1447,27 @@ nextLevelBtn.addEventListener("click", () => {
 
 createAbilityButtons();
 initTouchControls();
+initTelegramBindings();
+initFullscreenControl();
 resetGame();
 requestAnimationFrame(tick);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

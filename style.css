@@ -83,6 +83,79 @@ body {
   text-align: center;
 }
 
+.fullscreen-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 30;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 10px;
+  background: rgba(10, 12, 18, 0.82);
+  color: #f3f7ff;
+  padding: 8px 10px;
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+  backdrop-filter: blur(3px);
+}
+
+.fullscreen-toggle:active {
+  transform: translateY(1px);
+}
+
+.immersive-mode {
+  padding: 0;
+}
+
+.immersive-mode .app {
+  width: 100vw;
+  max-width: none;
+  min-height: 100vh;
+  border-radius: 0;
+  border: 0;
+  padding: 0;
+}
+
+.immersive-mode .topbar,
+.immersive-mode .hud-grid {
+  display: none;
+}
+
+.immersive-mode .viewport-wrap {
+  margin-top: 0;
+  width: 100vw;
+  height: 100vh;
+}
+
+.immersive-mode #gameCanvas {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  border: 0;
+}
+
+.immersive-mode .interaction-hint {
+  bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+.immersive-mode .touch-controls {
+  inset: 0;
+}
+
+.immersive-mode .fullscreen-toggle {
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
+}
+
+.immersive-mode .ending {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 120;
+  margin: 0;
+}
+
 .touch-controls {
   position: absolute;
   inset: 0;
@@ -349,6 +422,11 @@ body {
     max-width: 90%;
   }
 
+  .fullscreen-toggle {
+    font-size: 0.78rem;
+    padding: 7px 9px;
+  }
+
   .move-pad {
     width: 148px;
     height: 148px;
@@ -370,3 +448,5 @@ body {
     gap: 8px;
   }
 }
+
+
